@@ -17,18 +17,23 @@ dropdown list via the mouse can take focus or not (-btntakesfocus) or
 whether the widget itself can take focus or is skipped in the focusing 
 order.  The developer can also specify the maximum length of the dropdown 
 list such that if more than that number of items is added, a scrollbar is 
-automatically added (-height).
+automatically added (-height).  
 
-this widget is similar to other combo-boxes, ie. 	JComboBox, but has good 
+One can optionally specify a label (-label), similar to the "LabEntry" widget.  
+By default, the label appears packed to the left of the widget.  The 
+positioning can be specified via the "-labelPack" option.  For example, to 
+position the label above the widget, use "-labelPack => [-side => 'top']".
+
+This widget is similar to other combo-boxes, ie. 	JComboBox, but has good 
 keyboard bindings and allows for quick lookup/search within the listbox. 
-pressing <RETURN> or <DOWN> in entry field displays the dropdown box with the 
+pressing <RETURN> in entry field displays the dropdown box with the 
 first entry most closly matching whatever's in the entry field highlighted. 
 <UP> and <DOWN> arrows work the listbox as well as pressing a key, which will 
 move the highlight to the next item starting with that letter/number, etc.  
-pressing <RETURN> in the listbox selects the highlighted entry and copies it 
-to the text field and removes the listbox.  <SPACE> copies highlighted item 
-to the text field but leaves listbox showing and focused.  <ESC> removes the 
-listbox from view.  
+<UP> and <DOWN> arrows pressed within the entry field circle through the 
+various list options as well.  Pressing <RETURN> or <SPACE> in the listbox 
+selects the highlighted entry and copies it to the text field and removes the 
+listbox.  <ESC> removes the listbox from view.  
 
 =head1 EXAMPLES
 
@@ -154,7 +159,7 @@ listbox from view.
 package Tk::JBrowseEntry;
 
 use vars qw($VERSION);
-$VERSION = '4.2'; # $Id: //depot/Tk8/Tixish/JBrowseEntry.pm#14$
+$VERSION = '4.22'; # $Id: //depot/Tk8/Tixish/JBrowseEntry.pm#14$
 
 use Tk;
 use Carp;
@@ -264,6 +269,7 @@ sub Populate
 	my $tf = $w->Frame(-borderwidth => ($w->{-borderwidth} || 2), -highlightthickness => 1, 
 			-relief => ($w->{-relief} || 'sunken'));
 	my $e = $tf->LabEntry(-borderwidth => 0, -relief => 'flat');
+	# FOR SOME REASON, E HAS TO BE A LABENTRY, JUST PLAIN ENTRY WOULDN'T TAKE KEYBOARD EVENTS????
 	my $b = $tf->Button(-borderwidth => 1, -takefocus => $w->{btntakesfocus}, 
 			#-bitmap => '@' . Tk->findINC("balArrow.xbm"));
 			-bitmap => $BITMAP);
@@ -271,33 +277,36 @@ sub Populate
 	#$ll->packForget()  unless ($labelvalue);
 	if ($labelvalue)
 	{
-		#$ll->pack(-side => 'left');
 		$ll->pack(@$lpack);
 	}
 	else
 	{
-		$ll->packForget();
+		$ll->packForget();   # REMOVE LABEL, IF NO VALUE SPECIFIED.
 	}
-	$w->Advertise("entry" => $e);
-	$w->Advertise("arrow" => $b);
-	$w->Advertise("frame" => $tf);
+	$w->Advertise("entry" => $e);   #TEXT PART.
+	$w->Advertise("arrow" => $b);   #ARROW BUTTON PART.
+	$w->Advertise("frame" => $tf);  #SURROUNDING FRAME PART.
 	my ($ee) = $w->Subwidget("entry");
-	$w->Advertise("textpart" => $ee);
+	$w->Advertise("textpart" => $ee);   #TEXT COMPONENT OF LABENTRY WIDGET.
 	$tf->pack(-side => "right", -padx => 0, -pady => 0, -fill => 'x', -expand => 1);
 	$b->pack(-side => "right", -padx => 0, -pady => 0);
 	$e->pack(-side => "right", -fill => 'x', -padx => 0, -pady => 0, -expand => 1); #, -padx => 1);
 
-    # popup shell for listbox with values.
+	# POPUP SHELL FOR LISTBOX WITH VALUES.
+
 	my $c = $w->Toplevel(-bd => 2, -relief => "raised");
 	$c->overrideredirect(1);
 	$c->withdraw;
 	my $sl = $c->Scrolled( qw/Listbox -selectmode browse -scrollbars oe/ );
+
+	# PROPOGATE FORE & BACKGROUND COLORS TO ALL WIDGETS, IF SPECIFIED.
+
 	if (defined($w->{-foreground}))
 	{
 		$e->configure(-foreground => $w->{-foreground}, -highlightcolor => $w->{-foreground});
-		$tf->configure(-foreground => $w->{-foreground});
+		$tf->configure(-foreground => $w->{-foreground}, -highlightcolor => $w->{-foreground});
 		$sl->configure(-foreground => $w->{-foreground}, -highlightcolor => $w->{-foreground});
-		$b->configure(-foreground => $w->{-foreground});
+		$b->configure(-foreground => $w->{-foreground}, -highlightcolor => $w->{-foreground});
 	}
 	if (defined($w->{-background}))
 	{
@@ -306,11 +315,21 @@ sub Populate
 		$sl->configure(-background => $w->{-background}, -highlightbackground => $w->{-background});
 		$b->configure(-background => $w->{-background}, -highlightbackground => $w->{-background});
 	}
-	$w->Advertise("choices" => $c);
-	$w->Advertise("slistbox" => $sl);
+	elsif ($^O =~ /Win/i)   # SET BACKGROUND TO WINDOWS DEFAULTS (IF NOT SPECIFIED)
+	{
+		$sl->configure( -background => 'SystemWindow' );
+	}
+	if ($^O =~ /Win/i)
+	{
+		$sl->configure( -borderwidth => 1);
+		$c->configure( -borderwidth => ($w->{-borderwidth}||0), -relief => 'ridge' );
+	}
+	$w->Advertise("choices" => $c);   #LISTBOX POPUP MAIN WINDOW PART.
+	$w->Advertise("slistbox" => $sl); #ACTUAL LISTBOX ITSELF.
 	$sl->pack(-expand => 1, -fill => "both");
 
-    # other initializations
+	# OTHER INITIALIZATIONS.
+
 	$w->SetBindings;
 	$w->{"popped"} = 0;
 	$w->Delegates('insert' => $sl, 'delete' => $sl, get => $sl, DEFAULT => $e);
@@ -331,13 +350,16 @@ sub Populate
 	DEFAULT      => [$e] );
 
 	my $var_ref = $w->cget( "-textvariable" );
+
+	#SET UP DUMMY SO IT DISPLAYSS IF NO VARIABLE SPECIFIED.
+
 	unless (defined($var_ref) && ref($var_ref))
 	{
 		$var_ref = '';
 		$w->configure(-textvariable => \$var_ref);
 	}
 
-	eval { $w->{'default'} = $_[1]->{'-default'} || ${$_[1]->{-variable}}; };  #JWT
+	eval { $w->{'default'} = $_[1]->{'-default'} || ${$_[1]->{-variable}}; }; 
 
 
 #print "??? w=$w=\n";
@@ -350,20 +372,23 @@ sub focus
 	my ($state) = $w->cget( "-state" );
 #print "-focus! state=$state= tf=$w->{takefocus}=\n";
 
-	if ($state eq 'disabled')
+	if ($state eq 'disabled')   #MOVE FOCUS ON TO NEXT WIDGET (DON'T TAKE FOCUS).
 	{
 		eval {$w->focusNext->focus; };
 	}
 	else
 	{
-		if ($state eq 'readonly')
+		if ($state eq 'readonly')   #FRAME GETS FOCUS IF READONLY.
 		{
 			$w->Subwidget("frame")->focus;
 		}
-		else
+		else                        #OTHERWISE, TEXT ENTRY COMPONENT DOES.
 		{
 			$w->Subwidget("entry")->focus;
 		}
+
+		#BUTTON GETS FOCUS IF BUTTON TAKES FOCUS, BUT WIDGET ITSELF DOESN'T.
+
 		$w->Subwidget("arrow")->focus  if ($state eq 'normal' && !$w->{takefocus} && $w->{btntakesfocus});
 		$w->Subwidget("entry")->selectionRange(0,'end'); #  unless ($state eq 'readonly' && $w->{btntakesfocus});
 	}
@@ -379,7 +404,7 @@ sub SetBindings
 	my $sl = $w->Subwidget("slistbox");
 	my $l = $sl->Subwidget("listbox");
 
-	local *returnFn = sub
+	local *returnFn = sub   #HANDLES RETURN-KEY PRESSED IN ENTRY AREA.
 	{
 		my ($state) = $w->cget( "-state" );
 	
@@ -399,20 +424,20 @@ sub SetBindings
 		}
 	};
 
-	local *downFn = sub
+	local *downFn = sub   #HANDLES DOWN-ARROW PRESSED IN ENTRY AREA.
 	{
 		my ($state) = $w->cget( "-state" );
-		&LbFindSelection($w);         #JWT
+		&LbFindSelection($w); 
 		if ($w->{"popped"})
 		{
 			return if ($state eq 'textonly' || $state eq 'disabled');
-			&LbFindSelection($w);         #JWT
+			&LbFindSelection($w); 
 			$w->{'savefocus'} = $w->focusCurrent;
 			$w->Subwidget("slistbox")->focus;
 		}
 		else
 		{
-			&LbFindSelection($w);         #JWT
+			&LbFindSelection($w); 
 			my $l = $w->Subwidget("slistbox")->Subwidget("listbox");
 			my (@listsels) = $l->get('0','end');
 			my $index = $w->LbIndex;
@@ -426,7 +451,7 @@ sub SetBindings
 		}
 	};
 	
-	local *upFn = sub
+	local *upFn = sub   #HANDLES UP-ARROW PRESSED IN ENTRY AREA.
 	{
 		my ($state) = $w->cget( "-state" );
 		if ($w->{"popped"})
@@ -448,7 +473,7 @@ sub SetBindings
 		}
 	};
 
-	local *escapeFn = sub
+	local *escapeFn = sub   #HANDLES ESCAPE-KEY PRESSED IN ENTRY AREA.
 	{
 		if ($w->{"popped"})
 		{
@@ -470,12 +495,35 @@ sub SetBindings
 		Tk->break;
 	};
 
+	local *spacebarFn = sub   #HANDLES RETURN-KEY PRESSED IN ENTRY AREA.
+	{
+		my ($state) = $w->cget( "-state" );
+	
+		if ($state eq 'readonly')
+		{
+			&LbFindSelection($w);
+			unless ($w->{"popped"})
+			{
+				$w->BtnDown;
+				return if ($state eq 'textonly' || $state eq 'disabled');
+				$w->{'savefocus'} = $w->focusCurrent;
+				$w->Subwidget("slistbox")->focus;
+			}
+			else
+			{
+				$w->LbCopySelection;
+				$e->selectionRange(0,'end');
+				Tk->break;
+			}
+		}
+	};
+
 	# SET BIND TAGS
 
 	$w->bindtags([$w, 'Tk::JBrowseEntry', $w->toplevel, "all"]);
 	$e->bindtags([$e, $e->toplevel, "all"]);
 
-	# BINDINGS FOR THE BUTTON AND ENTRY
+	# IF USER-SPECIFIED IMAGE(S), CHANGE BUTTON IMAGE WHEN GETTING/LOSING FOCUS.
 
 	$b->bind("<FocusIn>", sub
 	{
@@ -518,10 +566,10 @@ sub SetBindings
 	}
 	);
 
-	$b->bind('<1>', sub
+	$b->bind('<1>', sub   #MOUSE CLICKED ON BUTTON.
 	{
 		my ($state) = $w->cget( "-state" );
-		&LbFindSelection($w);         #JWT
+		&LbFindSelection($w); 
 		$w->BtnDown;    #POPS UP LISTBOX!
 		if ($state eq 'readonly')
 		{
@@ -584,6 +632,9 @@ sub SetBindings
 	$e->bind("<Down>", \&downFn);
 	$f->bind("<Down>", \&downFn);
 
+	$e->bind("<space>", \&spacebarFn);
+	$f->bind("<space>", \&spacebarFn);
+
 	$e->bind("<Up>", \&upFn);
 	$f->bind("<Up>", \&upFn);
 
@@ -607,10 +658,10 @@ sub SetBindings
 	}
 	);
 
-	# bindings for listbox
+	# KEYBOARD BINDINGS FOR LISTBOX
 
 	$l->configure(-selectmode => 'browse');
-	$l->configure(-takefocus => 1);   #JWT
+	$l->configure(-takefocus => 1); 
 	$l->bind("<ButtonRelease-1>", sub
 	{
 		$w->ButtonHack;
@@ -650,15 +701,15 @@ sub SetBindings
 	}
 	);
 	$l->bind('<Key>' => [\&keyFn,$w,$e,$l,1]);  
-			#if $w->cget( "-state" ) eq "readonly";    #JWT
+			#if $w->cget( "-state" ) eq "readonly";
 	$e->bind('<Key>' => [\&keyFn,$w,$e,$l]);
 	$f->bind('<Key>' => [\&keyFn,$w,$e,$l]);
-			#unless $w->cget( "-state" ) eq "readonly";    #JWT
+			#unless $w->cget( "-state" ) eq "readonly";
 	$e->bind('<1>' => sub { 
 		my ($state) = $w->cget( "-state" );
 		if ($state eq 'readonly')
 		{
-			&LbFindSelection($w);         #JWT
+			&LbFindSelection($w);
 			$w->BtnDown;
 	     		$w->{'savefocus'} = $w->focusCurrent;
  	    		$w->Subwidget("slistbox")->focus;
@@ -671,7 +722,7 @@ sub SetBindings
 		}
 	});
 
-	# allow click outside the popped up listbox to pop it down.
+	# ALLOW CLICK OUTSIDE THE POPPED UP LISTBOX TO POP IT DOWN.
 
 	$w->bind("<1>", sub {$w->BtnDown; Tk->break});
 	$w->parent->bind("<1>", sub
@@ -687,7 +738,7 @@ sub SetBindings
 	$w->bind('<ButtonRelease-2>', sub {print "-focus=".$w->focusCurrent()."=\n";});
 }
 
-sub keyFn    #JWT: TRAP LETTERS PRESSED AND ADJUST SELECTION ACCORDINGLY.
+sub keyFn   #JWT: TRAP LETTERS PRESSED AND ADJUST SELECTION ACCORDINGLY.
 {
 #print "-keyfn: parms=".join('|',@_)."=\n";
 	my ($x,$w,$e,$l,$flag) = @_;
@@ -725,7 +776,8 @@ sub BtnDown
 
 	return if ($state eq 'textonly' || $state eq 'disabled');
 
-	#JWT NEXT 2 LINES PREVENT POPPING EMPTY LIST!
+	#JWT:   NEXT 2 LINES PREVENT POPPING EMPTY LIST!
+
 	my $l = $w->Subwidget("slistbox")->Subwidget("listbox");
 	return  unless ($l->get('0','end'));
 
@@ -765,9 +817,9 @@ sub PopupChoices
 		$hh[5]=$c->reqheight;
 		$hh[6]=$s->height;
 		$hh[7]=$s->reqheight;
+
 		my $sll = $s->Subwidget("listbox");
-		#my $rw = $c->reqwidth;
-		my $rw = $c->width;       #JWT
+		my $rw = $c->width; 
 		$first = 1  if ($rw <= 1);
 		my ($itemcnt) = $sll->index('end');
 		$wheight = 10  unless ($wheight);
@@ -785,24 +837,34 @@ sub PopupChoices
 		my ($unitpixels, $ht, $x1, $ee, $width, $x2);
 		if ($^O =~ /Win/i)
 		{
-			$unitpixels = $e->height - ((2 * $bd) + 1) + 2 + 4;
-			#$ht = $s->reqheight + 2 * $bd;
-			$ht = ($wheight * $unitpixels) + 10;
-#print "-bd=$bd= uht=$unitpixels= ht=$ht= wheight=".$w->cget("-height")."=\n";
-			#$x1 = $e->rootx;
-			$ee = $w->Subwidget("textpart");   #JWT
-			$x1 = $ee->rootx;   #JWT
+			#$y1 -= 3;
+#print "-bw=$w->{-borderwidth}= y1 was=$y1=\n";
+			$y1 -= 3 - ($w->{-borderwidth} || 2);
+#print "-bw=$w->{-borderwidth}= y1 now=$y1=\n";
+			#$unitpixels = $e->height - ((2 * $bd) + 1) + 6;
+			$unitpixels = $e->height + 1;
+			#$ht = ($wheight * $unitpixels) + 10;
+			$ht = ($wheight * $unitpixels) + (2 * $bd) + 4;
+#print "-???- eheight=$e->height= BD=$bd= up=$unitpixels= wh=$wheight= HT=$ht=\n";
+			#$ee = $w->Subwidget("textpart");
+			$ee = $w->Subwidget("frame");
+			$x1 = $ee->rootx;
 			$x2 = $a->rootx + $a->width;
 			$width = $x2 - $x1;
-			$rw = $width + 5;
+			$rw = $width + $w->{-borderwidth};
+			$x1 += 1;  #FUDGE MORE FOR WINDOWS (THINNER BORDER) TO MAKE DROPDOWN LINE UP VERTICALLY W/ENTRY&BUTTON.
 		}
 		else
 		{
-			$unitpixels = $e->height - ((2 * $bd) + 1) + 4;
-			$ht = ($wheight * $unitpixels) + 10;
+			$y1 -= 3 - ($w->{-borderwidth} || 2);
+			#$unitpixels = $e->height - ((2 * $bd) + 1) + 4;
+			$unitpixels = $e->height - 1;
+			#$ht = ($wheight * $unitpixels) + 10;
+			$ht = ($wheight * $unitpixels) + (2 * $bd) + 4;
 			#$x1 = $e->rootx;
-			$ee = $w->Subwidget("textpart");   #JWT
-			$x1 = $ee->rootx;   #JWT
+			#$ee = $w->Subwidget("textpart");
+			$ee = $w->Subwidget("frame");
+			$x1 = $ee->rootx;
 			$x2 = $a->rootx + $a->width;
 			$width = $x2 - $x1;
 			if ($rw < $width)
@@ -817,27 +879,29 @@ sub PopupChoices
 			$width = $rw;
 			if ($first)
 			{
-				$rw += 6;
+				#$rw += 4;
+				$rw += 1 + int($w->{-borderwidth} / 2);
 				$first = 0;
 			}
-	# if listbox is too far right, pull it back to the left
-	#
+
+			# IF LISTBOX IS TOO FAR RIGHT, PULL IT BACK TO THE LEFT
+
 			if ($x2 > $w->vrootwidth)
 			{
 				$x1 = $w->vrootwidth - $width;
 			}
+			$x1 += 1;  #FUDGE MORE FOR WINDOWS (THINNER BORDER) TO MAKE DROPDOWN LINE UP VERTICALLY W/ENTRY&BUTTON.
 		}
-#print "-apply fudge factor first=$first=\n";
-$x1 -= 3;  #FUDGE TO MAKE DROPDOWN LINE UP VERTICALLY W/ENTRY&BUTTON.
 
-	# if listbox is too far left, pull it back to the right
-	#
+		# IF LISTBOX IS TOO FAR LEFT, PULL IT BACK TO THE RIGHT
+
 		if ($x1 < 0)
 		{
 			$x1 = 0;
 		}
 
-	# if listbox is below bottom of screen, pull it up.
+		# IF LISTBOX IS BELOW BOTTOM OF SCREEN, PULL IT UP.
+
 		my $y2 = $y1 + $ht;
 		if ($y2 > $w->vrootheight)
 		{
@@ -846,17 +910,18 @@ $x1 -= 3;  #FUDGE TO MAKE DROPDOWN LINE UP VERTICALLY W/ENTRY&BUTTON.
 		$c->geometry(sprintf("%dx%d+%d+%d", $rw, $ht, $x1, $y1));
 		$c->deiconify;
 		$c->raise;
-	#$e->focus;
+		#$e->focus;
 		$w->focus;
 		$w->{"popped"} = 1;
 
-		&LbFindSelection;                      #JWT
+		&LbFindSelection; 
 		$c->configure(-cursor => "arrow");
 		$w->grabGlobal;
 	}
 }
 
-# choose value from listbox if appropriate
+# CHOOSE VALUE FROM LISTBOX IF APPROPRIATE.
+
 sub LbChoose
 {
 	my ($w, $x, $y) = @_;
@@ -865,17 +930,18 @@ sub LbChoose
 	if ((($x < 0) || ($x > $l->Width)) ||
 			(($y < 0) || ($y > $l->Height)))
 	{
-		# mouse was clicked outside the listbox... close the listbox
+		# MOUSE WAS CLICKED OUTSIDE THE LISTBOX... CLOSE THE LISTBOX
 		$w->LbClose;
 	}
 	else
 	{
-		# select appropriate entry and close the listbox
+		# SELECT APPROPRIATE ENTRY AND CLOSE THE LISTBOX
 		$w->LbCopySelection;
 	}
 }
 
-# close the listbox after clearing selection
+# CLOSE THE LISTBOX AFTER CLEARING SELECTION.
+
 sub LbClose
 {
 	my ($w) = @_;
@@ -885,7 +951,8 @@ sub LbClose
 	$w->Popdown;
 }
 
-# copy the selection to the entry and close listbox
+# COPY THE SELECTION TO THE ENTRY, AND CLOSE LISTBOX (UNLESS JUSTCOPY SET).
+
 sub LbCopySelection
 {
 	my ($w, $justcopy) = @_;
@@ -897,12 +964,14 @@ sub LbCopySelection
 		$l->configure(-selectmode => 'browse');
 		my $var_ref = $w->cget( "-textvariable" );
 		$$var_ref = $l->get($index);
-        #$var_ref = $w->cget("-listok") || undef;;
-        #$$var_ref = 1  if (defined($var_ref));
 	}
 	$w->Popdown  if ($w->{"popped"} && !$justcopy);
 	$w->Callback(-browsecmd => $w, $w->Subwidget('entry')->get);
 }
+
+# GRAB TEXT TYPED IN AND FIND NEAREST ENTRY IN LISTBOX AND SELECT IT.
+# LETTERSEARCH SET MEANS SEARCH FOR *NEXT* MATCH OF SPECIFIED LETTER,
+# CLEARED MEANS SEARCH FOR *1ST* ITEM STARTING WITH CURRENT TEXT ENTRY VALUE.
 
 sub LbFindSelection
 {
@@ -923,7 +992,7 @@ sub LbFindSelection
 	my (@listsels) = $l->get('0','end');
 	unless ($lettersearch)
 	{
-		foreach my $i (0..$#listsels)
+		foreach my $i (0..$#listsels)   #SEARCH FOR TRUE EQUALITY.
 		{
 			if ($listsels[$i] eq $srchval)
 			{
@@ -937,7 +1006,8 @@ sub LbFindSelection
 		}
 	}
 	my $index = $w->LbIndex;   #ADDED 20020711 TO ALLOW WRAPPING IF SAME LETTER PRESSED AGAIN!
-	foreach my $i (0..$#listsels)
+
+	foreach my $i (0..$#listsels)   #SEARCH W/O REGARD TO CASE, START W/CURRENT SELECTION.
 	{
 		++$index;
 		$index = 0  if ($index > $#listsels);
@@ -948,13 +1018,9 @@ sub LbFindSelection
 			$l->selectionSet($index);
 			$l->update();
 			$l->see($index);
-        			#$var_ref = $w->cget("-listok") || undef;;
-        			#$$var_ref = 1  if (defined($var_ref));
 			return -1;
 		}
 	}
-     #$var_ref = $w->cget("-listok") || undef;;
-     #$$var_ref = 0  if (defined($var_ref));
 	return 0;
 }
 
@@ -981,7 +1047,8 @@ sub LbIndex
 	}
 }
 
-# pop down the listbox
+# POP DOWN THE LISTBOX
+
 sub Popdown
 {
 	my ($w, $flag) = @_;
@@ -1003,14 +1070,14 @@ sub Popdown
 	}
 }
 
-# This hack is to prevent the ugliness of the arrow being depressed.
-#
+# THIS HACK IS TO PREVENT THE UGLINESS OF THE ARROW BEING DEPRESSED.
+
 sub ButtonHack
 {
 	my ($w) = @_;
 	my $b = $w->Subwidget("arrow");
 
-	#JWT: NEXT 6 LINES ADDED TO UNPOP MENU IF BUTTON PRESSED OUTSIDE OF LISTBOX.
+#JWT: NEXT 6 LINES ADDED TO UNPOP MENU IF BUTTON PRESSED OUTSIDE OF LISTBOX.
 
 	my $s = $w->Subwidget("slistbox");
 	my $e = $s->XEvent;
@@ -1028,11 +1095,11 @@ sub ButtonHack
 sub choices
 {
 	my $w = shift;
-	unless( @_ )
+	unless( @_ )   #NO ARGS, RETURN CURRENT CHOICES.
 	{
 		return( $w->get( qw/0 end/ ) );
 	}
-	else
+	else           #POPULATE DROPDOWN LIST WITH THESE CHOICES.
 	{
 		my $choices = shift;
 		if( $choices )
@@ -1040,6 +1107,9 @@ sub choices
 			$w->delete( qw/0 end/ );
 			$w->Subwidget("slistbox")->insert( "end", @$choices );
 		}
+
+		#NO WIDTH SPECIFIED, CALCULATE TEXT & LIST WIDTH BASED ON LONGEST CHOICE.
+
 		unless ($w->{-listwidth})
 		{
 			my @l = $w->Subwidget("slistbox")->get(0, 'end');
@@ -1054,11 +1124,13 @@ sub choices
 	}
 }
 
+# INSERT NEW ITEMS INTO DROPDOWN LIST.
+
 sub insert
 {
 	my $w = shift;
-	my $pos = shift || 'end';
-	my $item = shift;
+	my $pos = shift || 'end';    #POSITION IN LIST TO INSERT.
+	my $item = shift;            #POINTER TO OR LIST OF ITEMS TO INSERT.
 	if (ref($item))
 	{
 		$w->Subwidget("slistbox")->insert($pos, @$item);
@@ -1067,6 +1139,9 @@ sub insert
 	{
 		$w->Subwidget("slistbox")->insert($pos, ($item, @_));
 	}
+
+	#NO WIDTH SPECIFIED, (RE)CALCULATE TEXT & LIST WIDTH BASED ON LONGEST CHOICE.
+
 	unless ($w->{-listwidth})
 	{
 		my @l = $w->Subwidget("slistbox")->insert(0, 'end');
@@ -1079,10 +1154,12 @@ sub insert
 	}
 }
 
-sub curselection
+sub curselection  #RETURN CURRENT LISTBOX SELECTION.
 {
 	return shift->Subwidget("slistbox")->curselection;
 }
+
+# CHANGE APPEARANCES BASED ON CHANGES IN "-STATE" OPTION.
 
 sub _set_edit_state
 {
@@ -1090,88 +1167,107 @@ sub _set_edit_state
 	my $entry  = $w->Subwidget( "entry" );
 	my $frame  = $w->Subwidget( "frame" );
 	my $button = $w->Subwidget( "arrow" );
-	my ($color, $txtcolor, $hlcolor);         #6 TO MAKE ENTRY FIELDS LOOK WINDOSEY!
+	my ($color, $txtcolor, $framehlcolor, $texthlcolor);  # MAKE ENTRY FIELDS LOOK WINDOSEY!
 
-	if ($^O =~ /Win/i)
+	unless ($w->{-background})
 	{
-		if ($state eq 'disabled' || $state eq 'readonly')
+		if ($^O =~ /Win/i)   # SET BACKGROUND TO WINDOWS DEFAULTS (IF NOT SPECIFIED)
 		{
-			$color = "SystemButtonFace";
-		}
-		else
-		{# Not Editable
-			$color = $w->cget( -background );
-			$color = 'SystemWindow'  if ($color eq 'SystemButtonFace');
-		}
-		$entry->configure( -background => $color );
-	}
-	else
-	{
-		if ($w->cget( "-colorstate" ))
-		{
-			if( $state eq "normal" )
-			{# Editable
-				$color = "gray95";
+			#if ($state eq 'disabled' || $state eq 'readonly')
+			if ($state eq 'disabled')
+			{
+				$color = "SystemButtonFace";
 			}
 			else
 			{# Not Editable
-				$color = $w->cget( -background ) || "lightgray";
+				$color = $w->cget( -background );
+				$color = 'SystemWindow'  if ($color eq 'SystemButtonFace');
 			}
 			$entry->configure( -background => $color );
 		}
+		else
+		{
+			if ($w->cget( "-colorstate" ))
+			{
+				if( $state eq "normal" )
+				{# Editable
+					$color = "gray95";
+				}
+				else
+				{# Not Editable
+					$color = $w->cget( -background ) || "lightgray";
+				}
+				$entry->configure( -background => $color );
+			}
+		}
 	}
+
 	$txtcolor = $w->{-foreground} || $w->cget( -foreground )  unless ($state eq "disabled");
 
+	$texthlcolor = $w->{-background} || $entry->cget( -background );
+	$framehlcolor = $w->{-foreground} || $entry->cget( -foreground );
 	if( $state eq "readonly" )
 	{
-		$hlcolor = $w->{-foreground} || $entry->cget( -foreground );
+		$framehlcolor = $w->{-foreground} || $entry->cget( -foreground );
 		$entry->configure( -state => "disabled", -takefocus => 0, 
-				-foreground => $txtcolor);
+				-foreground => $txtcolor, -highlightcolor => $texthlcolor);
 		if ($^O =~ /Win/i)
 		{
 			$button->configure( -state => "normal", -takefocus => 0, -relief => 'raised');
-			$frame->configure(-relief => ($w->{-relief} || 'groove'), -takefocus => 1, -highlightcolor => $hlcolor);
+			$frame->configure(-relief => ($w->{-relief} || 'groove'), 
+					-takefocus => 1, -highlightcolor => $framehlcolor);
 		}
 		else
 		{
 			$button->configure( -state => "normal", -takefocus => 0, -relief => 'flat');
-			$frame->configure(-relief => ($w->{-relief} || 'raised'), -takefocus => 1, -highlightcolor => $hlcolor);
+			$frame->configure(-relief => ($w->{-relief} || 'raised'), 
+					-takefocus => 1, -highlightcolor => $framehlcolor);
 		}
 	}
 	elsif ($state eq "textonly" )
 	{
-		$hlcolor = $w->{-background} || $entry->cget( -background );
-		$button->configure( -state => "disabled", -takefocus => 0, -relief => 'raised');
-		$frame->configure(-relief => ($w->{-relief} || 'sunken'), -takefocus => 0, -highlightcolor => $hlcolor);
-		$entry->configure( -state => 'normal', -takefocus => (1 & ($w->{takefocus} || $w->{btntakesfocus})), 
-				-foreground => $txtcolor);
+		$framehlcolor = $w->{-background} || 'SystemButtonFace'
+				if ($^O =~ /Win/i);
+		$button->configure( -state => "disabled", -takefocus => 0, 
+				-relief => 'raised');
+		$frame->configure(-relief => ($w->{-relief} || 'sunken'), 
+				-takefocus => 0, -highlightcolor => $framehlcolor);
+		$entry->configure( -state => 'normal', 
+				-takefocus => (1 & ($w->{takefocus} || $w->{btntakesfocus})), 
+				-foreground => $txtcolor, -highlightcolor => $texthlcolor);
 	}
 	elsif ($state eq "disabled" )
 	{
-		$hlcolor = $w->{-background} || $entry->cget( -background );
 		$entry->configure( -state => "disabled", -takefocus => 0, 
-				-foreground => 'gray50');
+				-foreground => 'gray50', -highlightcolor => $texthlcolor);
 		if ($^O =~ /Win/i)
 		{
+			$framehlcolor = $w->{-background} || 'SystemButtonFace';
 			$button->configure(-state => "disabled",  -takefocus => 0, 
 					-relief => 'flat');
+			$frame->configure(-relief => ($w->{-relief} || 'sunken'), 
+					-takefocus => 0, -highlightcolor => $framehlcolor);
 		}
 		else
 		{
-			$button->configure(-state => "disabled",  -takefocus => 0, 
-					-relief => 'raised');
+			$frame->configure(-relief => ($w->{-relief} || 'groove'), 
+					-takefocus => 0, -highlightcolor => $framehlcolor);
 		}
-		$frame->configure(-relief => ($w->{-relief} || 'groove'), -takefocus => 0, -highlightcolor => $hlcolor);
+		$button->configure(-state => "disabled",  -takefocus => 0, 
+				-relief => 'raised');
 	}
-	else
+	else   #NORMAL.
 	{
-		$hlcolor = $w->{-background} || $entry->cget( -background );
-		$entry->configure( -state => $state, -takefocus => (1 & $w->{takefocus}), 
-				-foreground => $txtcolor);
+		$framehlcolor = $w->{-background} || 'SystemButtonFace'
+				if ($^O =~ /Win/i);
+		#$entry->configure( -state => $state, -takefocus => (1 & $w->{takefocus}), 
+		$entry->configure( -state => $state, -takefocus => 0, 
+				-foreground => $txtcolor, -highlightcolor => $texthlcolor);
 		$button->configure( -state => $state, -relief => 'raised', 
 				-takefocus => $w->{btntakesfocus});
 		$frame->configure(-relief => ($w->{-relief} || 'sunken'), 
-				-takefocus => 0, -highlightcolor => $hlcolor);
+				-takefocus => (1 & $w->{takefocus}), 
+				-highlightcolor => $framehlcolor);
 	}       
 }
 
