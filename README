@@ -1,0 +1,15 @@
+For quick screen-shots / examples, do:
+
+	perl ./JBrowseTest.pl
+
+For docs & examples, simply do:
+
+	pod2text Tk/JBrowseEntry.pm 
+
+To install, copy Tk/JBrowseEntry.pm to your Tk subdirectory within Perl's path.  To 
+determine Perl's path, do:
+
+	perl -V
+
+and look at the bottom.
+
