@@ -1,0 +1,51 @@
+Revision history for "ptkftp".
+
+4.31  Aug/2002
+	- Complete redesign from older version.
+	- Started recording Changes.
+4.4   Fri Aug 16, 2002
+	- Fixed bug where "-browsecmd" callback was called too often.
+	- Fixed bug where "end" was added as a value on listboxes with no "-width" 
+	  option specified when list was automatically resized.
+	- Fixed problem where listbox width not automatically resized down to new
+	  entry field width when it became smaller.
+	- Added code to cause the dropdown button and list to be disabled whenever 
+	  the list size becomes zero and reactivate whenever a choice is added to 
+	  a zero-length list.
+	- Fixed minor bugs with "choices" and "insert" function.
+	- Added this Changes file
+4.41  Sat Aug 17, 2002
+	- Fixed disabled background color on entry text.
+4.42
+	- Added "-maxwidth" option to limit maximum width in characters the 
+	  entry field will expand to.  Otherwise, it can expand as list items are 
+	  added to accomodate the widest item string.
+4.43  May 31, 2003
+	- Added several patches by Frank Herrmann to cause the "-browsecmd" 
+	  callback to be called whenever the text value changed, and some other 
+	  minor tweeks.
+4.44
+	- Added "-listrelief" option to allow one to specify the relief of the 
+	  dropdown list (defaults to "sunken" and was previously always "sunken").
+	- Added "-browse" option to allow for old "-browsecmd" callback behavior 
+	  so that it is only called when a selection is actually made from the 
+	  dropdown list.  This was the behavior before the "Frank Herrmann" 
+	  patches were added.  The default is the new behavior.  To get the old 
+	  behavior, use "-browse => 1".
+4.47  Thu Nov 20, 2003
+	- Added "-tabcomplete" option to allow pressing the "<Tab>" key in the 
+	  Entry widget to cause an incomplete string typed in to be "completed" to 
+	  the next matching string in the list.  Pressing the "<Tab>" key again 
+	  will transfer focus to the next widget.  To get this behavior, use 
+	  "-tabcomplete => 1".  The default is the old behavior of simply tabbing 
+	  to the next widget without altering the typed text.
+4.48  Fri Nov 21, 2003
+	- Fixed bug which caused tab-key to be "stuck" on the widget if there 
+	  was nothing in the listbox.  Made "-tabcomplete" not change what 
+	  user typed in if there is no match in the list.  Added 
+	  "-tabcomplete => 2" to keep 4.47 behavior (force tab to change the 
+	  typed value to a valid list entry or the default value).
+4.49	 -not released.
+4.50	 Fri Nov 28, 2003
+	- Minor tweeks in relief appearance.
+

@@ -1,8 +1,49 @@
+NAME
+    JBrowseEntry is a full-featured "Combo-box" (Text-entry combined with
+    drop-down listbox.  
+
+	Copyright (c) 2001, 2002, 2003 by Jim Turner, All rights reservered.  
+	JBrowseEntry  is licenced under the same licence as Perl itself.
+
+DESCRIPTION
+    JBrowseEntry widgets allow one to specify a full combo-box, a "readonly"
+    box (text field allows user to type the 1st letter of an item to search
+    for, but user may only ultimately select one of the items in the list),
+    or a "textonly" version (drop-down list disabled), or a completely
+    disabled widget. One may also specify whether or not the button which
+    activates the dropdown list via the mouse can take focus or not
+    (-btntakesfocus) or whether the widget itself can take focus or is
+    skipped in the focusing order. The developer can also specify the
+    maximum length of the dropdown list such that if more than that number
+    of items is added, a scrollbar is automatically added (-height).
+
+    One can optionally specify a label (-label), similar to the "LabEntry"
+    widget. By default, the label appears packed to the left of the widget.
+    The positioning can be specified via the "-labelPack" option. For
+    example, to position the label above the widget, use "-labelPack =>
+    [-side => 'top']".
+
+    This widget is similar to other combo-boxes, ie. JComboBox, but has good
+    keyboard bindings and allows for quick lookup/search within the listbox.
+    pressing <RETURN> in entry field displays the dropdown box with the
+    first entry most closly matching whatever's in the entry field
+    highlighted. <UP> and <DOWN> arrows work the listbox as well as pressing
+    a key, which will move the highlight to the next item starting with that
+    letter/number, etc. <UP> and <DOWN> arrows pressed within the entry
+    field circle through the various list options as well. Pressing <RETURN>
+    or <SPACE> in the listbox selects the highlighted entry and copies it to
+    the text field and removes the listbox. <ESC> removes the listbox from
+    view.  There is also a "Tab-Complete" option.
+
 For quick screen-shots / examples, do:
 
 	perl ./JBrowseTest.pl
+	
+	-or- 
+	
+	visit  http://turnerville.wwol.com/jim
 
-For docs & examples, simply do:
+For more docs & examples, simply do:
 
 	pod2text Tk/JBrowseEntry.pm 
 
@@ -13,3 +54,8 @@ determine Perl's path, do:
 
 and look at the bottom.
 
+
+Enjoy!
+
+
+Jim Turner

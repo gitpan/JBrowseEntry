@@ -12,28 +12,39 @@ JBrowseEntry widgets allow one to specify a full combo-box, a "readonly"
 box (text field allows user to type the 1st letter of an item to search for, 
 but user may only ultimately select one of the items in the list), or a 
 "textonly" version (drop-down list disabled), or a completely disabled 
-widget.  One may also specify whether or not the button which activates the 
-dropdown list via the mouse can take focus or not (-btntakesfocus) or 
-whether the widget itself can take focus or is skipped in the focusing 
-order.  The developer can also specify the maximum length of the dropdown 
-list such that if more than that number of items is added, a scrollbar is 
-automatically added (-height).  
-
-One can optionally specify a label (-label), similar to the "LabEntry" widget.  
-By default, the label appears packed to the left of the widget.  The 
-positioning can be specified via the "-labelPack" option.  For example, to 
-position the label above the widget, use "-labelPack => [-side => 'top']".
+widget.  
 
 This widget is similar to other combo-boxes, ie. 	JComboBox, but has good 
 keyboard bindings and allows for quick lookup/search within the listbox. 
 pressing <RETURN> in entry field displays the dropdown box with the 
 first entry most closly matching whatever's in the entry field highlighted. 
-<UP> and <DOWN> arrows work the listbox as well as pressing a key, which will 
-move the highlight to the next item starting with that letter/number, etc.  
-<UP> and <DOWN> arrows pressed within the entry field circle through the 
-various list options as well.  Pressing <RETURN> or <SPACE> in the listbox 
+Pressing <RETURN> or <SPACE> in the listbox 
 selects the highlighted entry and copies it to the text field and removes the 
 listbox.  <ESC> removes the listbox from view.  
+<UP> and <DOWN> arrows work the listbox as well as pressing a key, which will 
+move the highlight to the next item starting with that letter/number, etc. 
+<UP> and <DOWN> arrows pressed within the entry field circle through the 
+various list options as well (unless "-state" is set to 'textonly').  
+Set "-state" to "text" to disable the dropdown list, but allow <UP> and 
+<DOWN> to cycle among the choices.  Setting "-state" to 'textonly' completely 
+hides the choices list from the user - he must type in his choice just like 
+a normal entry widget.
+
+One may also specify whether or not the button which activates the 
+dropdown list via the mouse can take focus or not (-btntakesfocus) or 
+whether the widget itself can take focus or is skipped in the focusing 
+order.  The developer can also specify alternate bitmap images for the 
+button (-arrowimage and -farrowimage).  The developer can also specify the 
+maximum length of the dropdown list such that if more than that number of 
+items is added, a vertical scrollbar is automatically added (-height).  
+A fixed width in characters (-width) can be specified, or the widget can be 
+allowed to resize itself to the width of the longest string in the list.  The 
+listbox and text entry field are automatically kept to the same width.
+
+One can optionally specify a label (-label), similar to the "LabEntry" widget.  
+By default, the label appears packed to the left of the widget.  The 
+positioning can be specified via the "-labelPack" option.  For example, to 
+position the label above the widget, use "-labelPack => [-side => 'top']".
 
 =head1 EXAMPLES
 
@@ -67,7 +78,7 @@ listbox.  <ESC> removes the listbox from view.
  $jb2 = $MainWin->JBrowseEntry(
  	-label => 'TextOnly:',
  	-variable => \$dbname2,
- 	-state => 'textonly',
+ 	-state => 'text',
  	-choices => [qw(pigs cows foxes goats)],
  	-width  => 12);
  $jb2->pack(
@@ -159,7 +170,7 @@ listbox.  <ESC> removes the listbox from view.
 package Tk::JBrowseEntry;
 
 use vars qw($VERSION);
-$VERSION = '4.22'; # $Id: //depot/Tk8/Tixish/JBrowseEntry.pm#14$
+$VERSION = '4.50';
 
 use Tk;
 use Carp;
@@ -239,9 +250,7 @@ sub ClassInit
 sub Populate
 {
 	my ($w, $args) = @_;
-#print "-args=".join('|',@_);
-#foreach (keys %{$_[1]}) {print "-value($_)=$_[1]->{$_}=\n";};
-#print "-default=$_[1]->{'-default'}=\n";
+#foreach my $i (keys %{$args}) {print "-args($i)=$args->{$i}=\n"; };
 	$w->{btntakesfocus} = 0;
 	$w->{btntakesfocus} = delete ($args->{-btntakesfocus})  if (defined($args->{-btntakesfocus}));
 	$w->{arrowimage} = $args->{-arrowimage}  if (defined($args->{-arrowimage}));
@@ -250,10 +259,26 @@ sub Populate
 	$w->{takefocus} = 1;
 	$w->{takefocus} = delete ($args->{-takefocus})  if (defined($args->{-takefocus}));
 	$w->{-listwidth} = $args->{-width}  if (defined($args->{-width}));
+	$w->{-maxwidth} = delete($args->{-maxwidth})  if (defined($args->{-maxwidth}));
 	$w->{-foreground} = $args->{-foreground}  if (defined($args->{-foreground}));
+	$w->{-background} = $w->parent->cget(-background) || 'gray';
 	$w->{-background} = $args->{-background}  if (defined($args->{-background}));
+	$w->{-foreground} = $w->parent->cget(-foreground);
+	#$w->{-borderwidth} = 2;
 	$w->{-borderwidth} = delete($args->{-borderwidth})  if (defined($args->{-borderwidth}));
+	$w->{-relief} = 'sunken';
 	$w->{-relief} = delete($args->{-relief})  if (defined($args->{-relief}));
+	$w->{-listrelief} = 'sunken';
+	$w->{-listrelief} = delete($args->{-listrelief})  if (defined($args->{-listrelief}));
+	$w->{-listfont} = delete($args->{-listfont})  if (defined($args->{-listfont}));
+	$w->{-noselecttext} = delete($args->{-noselecttext})  if (defined($args->{-noselecttext}));
+	$w->{-browse} = delete($args->{-browse})  if (defined($args->{-browse}));
+	$w->{-tabcomplete} = 0;
+	$w->{-tabcomplete} = delete($args->{-tabcomplete})  if (defined($args->{-tabcomplete}));
+#	unless (defined($w->{-noselecttext}))
+#	{
+#		$w->{-noselecttext} = 1  if ($args->{-state} eq 'readonly');
+#	}
 	$w->SUPER::Populate($args);
 
 	# ENTRY WIDGET AND ARROW BUTTON
@@ -264,7 +289,7 @@ sub Populate
 		$lpack = [-side => "left", -anchor => "e"];
 	}
 	my $labelvalue = $args->{-label};
-#foreach my $x (%$args) {print "-arg($x)=$args->{$x}=\n";};
+
 	my $ll = $w->Label(-text => delete $args->{-label});
 	my $tf = $w->Frame(-borderwidth => ($w->{-borderwidth} || 2), -highlightthickness => 1, 
 			-relief => ($w->{-relief} || 'sunken'));
@@ -289,7 +314,7 @@ sub Populate
 	my ($ee) = $w->Subwidget("entry");
 	$w->Advertise("textpart" => $ee);   #TEXT COMPONENT OF LABENTRY WIDGET.
 	$tf->pack(-side => "right", -padx => 0, -pady => 0, -fill => 'x', -expand => 1);
-	$b->pack(-side => "right", -padx => 0, -pady => 0);
+	$b->pack(-side => "right", -padx => 0, -pady => 0, -fill => 'y');
 	$e->pack(-side => "right", -fill => 'x', -padx => 0, -pady => 0, -expand => 1); #, -padx => 1);
 
 	# POPUP SHELL FOR LISTBOX WITH VALUES.
@@ -308,6 +333,10 @@ sub Populate
 		$sl->configure(-foreground => $w->{-foreground}, -highlightcolor => $w->{-foreground});
 		$b->configure(-foreground => $w->{-foreground}, -highlightcolor => $w->{-foreground});
 	}
+	if (defined($w->{-listrelief}))
+	{
+		$sl->configure(-relief => ($w->{-listrelief}||'sunken'));
+	}
 	if (defined($w->{-background}))
 	{
 		$e->configure(-background => $w->{-background}, -highlightbackground => $w->{-background});
@@ -324,6 +353,7 @@ sub Populate
 		$sl->configure( -borderwidth => 1);
 		$c->configure( -borderwidth => ($w->{-borderwidth}||0), -relief => 'ridge' );
 	}
+	$sl->configure(-font => $w->{-listfont})  if ($w->{-listfont});
 	$w->Advertise("choices" => $c);   #LISTBOX POPUP MAIN WINDOW PART.
 	$w->Advertise("slistbox" => $sl); #ACTUAL LISTBOX ITSELF.
 	$sl->pack(-expand => 1, -fill => "both");
@@ -335,6 +365,7 @@ sub Populate
 	$w->Delegates('insert' => $sl, 'delete' => $sl, get => $sl, DEFAULT => $e);
 	$w->ConfigSpecs(
 			-listwidth   => [qw/PASSIVE  listWidth   ListWidth/,   undef],
+			-maxwidth   => [qw/PASSIVE  maxWidth   MaxWidth/,   undef],
 			-height      => [qw/PASSIVE  height      Height/,      undef],
 			-listcmd     => [qw/CALLBACK listCmd     ListCmd/,     undef],
 			-browsecmd   => [qw/CALLBACK browseCmd   BrowseCmd/,   undef],
@@ -360,17 +391,12 @@ sub Populate
 	}
 
 	eval { $w->{'default'} = $_[1]->{'-default'} || ${$_[1]->{-variable}}; }; 
-
-
-#print "??? w=$w=\n";
-#foreach (keys %{$w->{ConfigSpecs}}) {print "-value($_)=$w->{ConfigSpecs}->{$_}=\n";};
 }
 
 sub focus
 {
 	my ($w) = shift;
 	my ($state) = $w->cget( "-state" );
-#print "-focus! state=$state= tf=$w->{takefocus}=\n";
 
 	if ($state eq 'disabled')   #MOVE FOCUS ON TO NEXT WIDGET (DON'T TAKE FOCUS).
 	{
@@ -378,7 +404,11 @@ sub focus
 	}
 	else
 	{
-		if ($state eq 'readonly')   #FRAME GETS FOCUS IF READONLY.
+		if ($w->{'savefocus'} && Tk::Exists($w->{'savefocus'}))
+		{
+			$w->{'savefocus'}->focus;
+		}
+		elsif ($state eq 'readonly')   #FRAME GETS FOCUS IF READONLY.
 		{
 			$w->Subwidget("frame")->focus;
 		}
@@ -386,11 +416,16 @@ sub focus
 		{
 			$w->Subwidget("entry")->focus;
 		}
+		delete $w->{'savefocus'};
 
 		#BUTTON GETS FOCUS IF BUTTON TAKES FOCUS, BUT WIDGET ITSELF DOESN'T.
 
-		$w->Subwidget("arrow")->focus  if ($state eq 'normal' && !$w->{takefocus} && $w->{btntakesfocus});
-		$w->Subwidget("entry")->selectionRange(0,'end'); #  unless ($state eq 'readonly' && $w->{btntakesfocus});
+		$w->Subwidget("arrow")->focus  if (!$w->{takefocus} && $w->{btntakesfocus});
+		$w->Subwidget("entry")->icursor('end');
+		unless ($w->{-noselecttext} || !$w->Subwidget("entry")->index('end'))
+		{
+			$w->Subwidget("entry")->selectionRange(0,'end'); #  unless ($state eq 'readonly' && $w->{btntakesfocus});
+		}		
 	}
 }
 
@@ -412,14 +447,15 @@ sub SetBindings
 		unless ($w->{"popped"})
 		{
 			$w->BtnDown;
-			return if ($state eq 'textonly' || $state eq 'disabled');
+			return if ($state =~ /text/ || $state eq 'disabled');
 			$w->{'savefocus'} = $w->focusCurrent;
 			$w->Subwidget("slistbox")->focus;
 		}
 		else
 		{
-			$w->LbCopySelection;
-			$e->selectionRange(0,'end');
+			$w->LbCopySelection(0,'entry.enter');
+			$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
+			$e->icursor('end');
 			Tk->break;
 		}
 	};
@@ -427,10 +463,11 @@ sub SetBindings
 	local *downFn = sub   #HANDLES DOWN-ARROW PRESSED IN ENTRY AREA.
 	{
 		my ($state) = $w->cget( "-state" );
+		return  if ($state eq 'textonly' || $state eq 'disabled');
 		&LbFindSelection($w); 
 		if ($w->{"popped"})
 		{
-			return if ($state eq 'textonly' || $state eq 'disabled');
+			return if ($state eq 'text');
 			&LbFindSelection($w); 
 			$w->{'savefocus'} = $w->focusCurrent;
 			$w->Subwidget("slistbox")->focus;
@@ -448,15 +485,18 @@ sub SetBindings
 			}
 			my $var_ref = $w->cget( "-textvariable" );
 			$$var_ref = $listsels[$index];
+			$e->icursor('end');
+			$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
 		}
 	};
 	
 	local *upFn = sub   #HANDLES UP-ARROW PRESSED IN ENTRY AREA.
 	{
 		my ($state) = $w->cget( "-state" );
+		return  if ($state eq 'textonly' || $state eq 'disabled');
 		if ($w->{"popped"})
 		{
-			return if ($state eq 'textonly' || $state eq 'disabled');
+			return if ($state eq 'text');
 			&LbFindSelection($w);
 			$w->{'savefocus'} = $w->focusCurrent;
 			$w->Subwidget("slistbox")->focus;
@@ -470,6 +510,8 @@ sub SetBindings
 			$index = $#listsels  if ($index < 0);
 			my $var_ref = $w->cget( "-textvariable" );
 			$$var_ref = $listsels[$index];
+			$e->icursor('end');
+			$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
 		}
 	};
 
@@ -482,7 +524,10 @@ sub SetBindings
 		else
 		{
 			my $var_ref = $w->cget( "-textvariable" );
-			if ($$var_ref eq $w->{'default'} && $w->cget( "-state" ) ne "readonly")
+			#if ($$var_ref eq $w->{'default'} && $w->cget( "-state" ) ne "readonly")
+			#CHGD. TO NEXT 20030531 PER PATCH BY FRANK HERRMANN.
+			if (defined $w->{'default'} and $$var_ref eq $w->{'default'} 
+					and $w->cget( "-state" ) ne "readonly")
 			{
 				$$var_ref = '';
 			}
@@ -490,8 +535,9 @@ sub SetBindings
 			{
 				$$var_ref = $w->{'default'};
 			}
+			$e->icursor('end');
 		}
-		$e->selectionRange(0,'end');   #ADDED 20020716
+		$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));   #ADDED 20020716
 		Tk->break;
 	};
 
@@ -505,14 +551,15 @@ sub SetBindings
 			unless ($w->{"popped"})
 			{
 				$w->BtnDown;
-				return if ($state eq 'textonly' || $state eq 'disabled');
+				return if ($state =~ /text/ || $state eq 'disabled');
 				$w->{'savefocus'} = $w->focusCurrent;
 				$w->Subwidget("slistbox")->focus;
 			}
 			else
 			{
-				$w->LbCopySelection;
-				$e->selectionRange(0,'end');
+				$w->LbCopySelection(0,'entry.space');
+				$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
+				$e->icursor('end');
 				Tk->break;
 			}
 		}
@@ -528,6 +575,7 @@ sub SetBindings
 	$b->bind("<FocusIn>", sub
 	{
 		$b = shift;
+		my ($state) = $w->cget( "-state" );
 		my $img = $w->{farrowimage} || $b->cget('-image');
 		if ($img)
 		{
@@ -543,11 +591,24 @@ sub SetBindings
 			$b->configure(-bitmap => $w->{img0});
 		}
 		$w->{imgname} = 'cbfarrow';
+		$w->{savehl} = $f->cget(-highlightcolor);
+		my $framehlcolor;
+		if ($^O =~ /Win/i)
+		{
+			$framehlcolor = $w->{-background} || 'SystemButtonFace';
+		}
+		else
+		{
+			$framehlcolor = $w->{-background} || $e->cget( -background );
+		}
+		$f->configure(-highlightcolor => $framehlcolor);
 	}
 	);
+
 	$b->bind("<FocusOut>", sub
 	{
 		$b = shift;
+		my ($state) = $w->cget( "-state" );
 		my $img = $w->{arrowimage} || $b->cget('-image');
 		if ($img)
 		{
@@ -563,51 +624,62 @@ sub SetBindings
 			$b->configure(-bitmap => $w->{img1});
 		}
 		$w->{imgname} = 'cbxarrow';
+		$f->configure(-highlightcolor => $w->{savehl})  if ($w->{savehl});
 	}
 	);
 
 	$b->bind('<1>', sub   #MOUSE CLICKED ON BUTTON.
 	{
-		my ($state) = $w->cget( "-state" );
-		&LbFindSelection($w); 
-		$w->BtnDown;    #POPS UP LISTBOX!
-		if ($state eq 'readonly')
+		my ($state) = $b->cget( "-state" );
+		unless ($state eq 'disabled')
 		{
-	     		$w->{'savefocus'} = $w->focusCurrent;
- 	    		$w->Subwidget("slistbox")->focus;
-		}
-		else
-		{
-			$e->focus;
+			&LbFindSelection($w)  if ($w->{popped}); 
+			$w->BtnDown;    #POPS UP LISTBOX!
+			if ($w->{popped})
+			{
+				my $index = $w->LbIndex;
+				$index = 0  if (!defined($index) || $index < 0);
+				$l->focus;
+				$l->activate($index);      #THIS UNDERLINES IT.
+				$l->selectionClear(0,'end');  #THIS HIGHLIGHTS IT (NEEDED 1ST TIME?!)
+				$l->selectionSet($index);  #THIS HIGHLIGHTS IT (NEEDED 1ST TIME?!)
+			}
+			$w->LbCopySelection(1,'buttondown.button1');
 		}
 		Tk->break;
 	}
 	);
-	$b->toplevel->bind("<ButtonRelease-1>", sub {$w->ButtonHack;});
-#$e->bind("<ButtonRelease-1>", sub {print "-ebind!\n"; $w->LbClose;});
-#JWT: UNCOMMENTING ABOVE LINE WILL UNPOST LISTBOX IF MOUSE CLICKED IN TEXTAREA, 
-#BUT WILL ELIMINATE ABILITY TO SELECT, TYPE, AND HAVE SELECTED MENU ITEM CHANGE 
-#WHILE TYPING!!!
+
+	$b->bind("<ButtonRelease-1>", sub {
+		my ($state) = $b->cget( "-state" );
+		if ($state ne 'disabled' && $w->{'popped'})   #LISTBOX IS SHOWING
+		{
+			$w->LbCopySelection(1,'buttonup.button1');
+		}
+		Tk->break;
+	}
+	);
 
 	$b->bind("<space>", sub
 	{
 		my ($state) = $w->cget( "-state" );
-		return if ($state eq 'textonly' || $state eq 'disabled');
+		return if ($state =~ /text/ || $state eq 'disabled');
 
 		&LbFindSelection($w);
 		$w->BtnDown;
-		$w->{'savefocus'} = $w->focusCurrent;
+		$w->{'savefocus'} = $b || $w->focusCurrent;
 		$w->Subwidget("slistbox")->focus;
 	}
 	);
+
 	$b->bind("<Return>", sub
 	{
 		my ($state) = $w->cget( "-state" );
-		return if ($state eq 'textonly' || $state eq 'disabled');
+		return if ($state =~ /text/ || $state eq 'disabled');
 
 		&LbFindSelection($w);
 		$w->BtnDown;
-		$w->{'savefocus'} = $w->focusCurrent;
+		$w->{'savefocus'} = $b || $w->focusCurrent;
 		$w->Subwidget("slistbox")->focus;
 		Tk->break;
 	}
@@ -616,11 +688,11 @@ sub SetBindings
 	$b->bind("<Down>", sub
 	{
 		my ($state) = $w->cget( "-state" );
-		return if ($state eq 'textonly' || $state eq 'disabled');
+		return if ($state =~ /text/ || $state eq 'disabled');
 
 		&LbFindSelection($w);
 		$w->BtnDown;
-		$w->{'savefocus'} = $w->focusCurrent;
+		$w->{'savefocus'} = $b || $w->focusCurrent;
 		$w->Subwidget("slistbox")->focus;
 		Tk->break;
 	}
@@ -645,14 +717,61 @@ sub SetBindings
 	$e->bind("<Right>", sub {Tk->break;});
 	$f->bind("<Left>", sub {Tk->break;});
 	$f->bind("<Right>", sub {Tk->break;});
+
 	$e->bind("<Tab>", sub
 	{
-		$w->Popdown  if  ($w->{"popped"});   #UNDISPLAYS LISTBOX.
-		eval { shift->focusNext->focus; };
+		my $same = 1;
+		#NEXT LINE ADDED 20030531 PER PATCH BY FRANK HERRMANN.
+		$w->Callback(-browsecmd => $w, $w->Subwidget('entry')->get, 'entry.tab')
+				if ($w->{-browse} == 1);
+		if ($w->{-tabcomplete})
+		{
+			my $var_ref = $w->cget( "-textvariable" );
+			if (&LbFindSelection($w))
+			{
+				my @listsels = $l->get('0','end');
+				my $index = $w->LbIndex;
+				unless ($$var_ref eq $listsels[$index])
+				{
+					$$var_ref = $listsels[$index];
+					$e->icursor('end');
+					$same = 0;
+				}
+			}
+			elsif ($w->{-tabcomplete} == 2)
+			{
+				#THIS CODE FORCES TAB TO CHANGE TEXT ENTERED TO A LIST ITEM!
+				#THIS SUCKS IF THERE IS NO LIST OR USER WISHES TO OVERRIDE!
+				unless ($$var_ref eq ((defined $w->{'default'}) ? $w->{'default'} : ''))
+				{
+					if (defined $w->{'default'})
+					{
+						$$var_ref = $w->{'default'};
+					}
+					else
+					{
+						$$var_ref = '';
+					}
+					$e->icursor('end');
+					$same = 0;
+				}
+			}
+			$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
+		}
+		if  ($w->{"popped"})   #UNDISPLAYS LISTBOX.
+		{
+			$w->Popdown;
+		}
+		eval { shift->focusNext->focus; }  if ($same);
+		Tk->break;
 	}
 	);
+
 	$f->bind("<Tab>", sub
 	{
+		#NEXT LINE ADDED 20030531 PER PATCH BY FRANK HERRMANN.
+		$w->Callback(-browsecmd => $w, $w->Subwidget('entry')->get, 'frame.tab')
+				if ($w->{-browse} == 1);
 		$w->Popdown  if  ($w->{"popped"});
 		eval { shift->focusNext->focus; };
 	}
@@ -676,16 +795,18 @@ sub SetBindings
 	);
 	$l->bind('<Return>' => sub
 	{
-		$w->LbCopySelection;
-		$e->selectionRange(0,'end');
+		$w->LbCopySelection(0,'listbox.enter');
+		#$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
+		#$e->icursor('end');
 		Tk->break;
 	}
 	);
 	$l->bind('<space>' => sub
 	{
 		my ($state) = $w->cget( "-state" );
-		$w->LbCopySelection;
-		$e->selectionRange(0,'end');
+		$w->LbCopySelection(0,'listbox.space');
+		$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
+		$e->icursor('end');
 		Tk->break;
 	}
 	);
@@ -697,6 +818,19 @@ sub SetBindings
 		$w->Popdown  if ($^O =~ /Win/i || $state eq 'readonly');  #WINDUHS LOWERS LISTBOX BEHIND CALLER (HIDES IT)!
 		$e->focus()  unless ($state eq 'readonly');  #SO WE'LL POP IT DOWN FIRST! (RAISE WOULDN'T WORK :-()
 		$w->BtnDown  if ($^O =~ /Win/i && $state ne 'readonly' && $w->{takefocus});
+		if ($w->{-tabcomplete})
+		{
+			&LbFindSelection($w);
+			my @listsels = $l->get('0','end');
+			my $index = $w->LbIndex;
+			my $var_ref = $w->cget( "-textvariable" );
+			unless ($$var_ref eq $listsels[$index])
+			{
+				$$var_ref = $listsels[$index];
+				$e->icursor('end');
+			}
+			$e->selectionRange(0,'end')  unless ($w->{-noselecttext} || !$e->index('end'));
+		}
 		Tk->break;
 	}
 	);
@@ -710,16 +844,32 @@ sub SetBindings
 		if ($state eq 'readonly')
 		{
 			&LbFindSelection($w);
-			$w->BtnDown;
+			if ($w->{"popped"})
+			{
+				$w->Popdown(1);
+			}
+			else
+			{
+				$w->BtnDown;
+			}
 	     		$w->{'savefocus'} = $w->focusCurrent;
  	    		$w->Subwidget("slistbox")->focus;
  	    		Tk->break;
 		}
 		else
 		{
+			if ($w->{"popped"})
+			{
+				$w->Popdown(1);
+			}
 			$e->focus;
  	    		Tk->break;
 		}
+	});
+
+	#NEXT 3 LINES ADDED 20030531 PER PATCH BY FRANK HERRMANN.
+	$e->bind('<2>' => sub { 
+		$e->focus;
 	});
 
 	# ALLOW CLICK OUTSIDE THE POPPED UP LISTBOX TO POP IT DOWN.
@@ -740,25 +890,22 @@ sub SetBindings
 
 sub keyFn   #JWT: TRAP LETTERS PRESSED AND ADJUST SELECTION ACCORDINGLY.
 {
-#print "-keyfn: parms=".join('|',@_)."=\n";
 	my ($x,$w,$e,$l,$flag) = @_;
-#print "-keyfn($x,$w,$e,$l,$flag)\n";
 	my $mykey = $x->XEvent->A;
-#print "-keyFn: pressed=$mykey=\n";
+
+	#NEXT LINE ADDED 20030531 PER PATCH BY FRANK HERRMANN.
+	$w->Callback(-browsecmd => $w, $w->Subwidget('entry')->get, "key.$mykey")
+			if ($w->{-browse} == 1);
+
 	if ($w->cget( "-state" ) eq "readonly")  #ADDED 20020711 TO ALLOW TYPING 1ST LETTER TO SELECT NEXT VALID ITEM!
 	{
 		&LbFindSelection($w,$mykey)  if ($mykey);  #JUMP TO 1ST ITEM STARTING WITH THIS KEY
-		$w->LbCopySelection(1);
-#		unless ($w->{"popped"})   #THIS WILL CAUSE LISTBOX TO BE DISPLAYED AS WELL.
-#		{
-#			$w->BtnDown;
-#		}
-#		$w->{'savefocus'} = $w->focusCurrent;
-#		$w->Subwidget("slistbox")->focus;
-
-		$w->Subwidget("entry")->selectionRange(0,'end')  unless ($w->{"popped"});;
+		$w->LbCopySelection(1,'key.$mykey');
+		$w->Subwidget("entry")->selectionRange(0,'end')  unless ($w->{"popped"} 
+				|| $w->{-noselecttext} || !$w->Subwidget("entry")->index('end'));
+		$e->icursor('end');
 	}
-	elsif ($flag == 1)      #LISTBOX HAS FOCUS.
+	elsif (defined $flag and $flag == 1)      #LISTBOX HAS FOCUS.
 	{
 		&LbFindSelection($w,$mykey)  if ($mykey);  #JUMP TO 1ST ITEM STARTING WITH THIS KEY
 	}
@@ -774,7 +921,7 @@ sub BtnDown
 	my ($w) = @_;
 	my ($state) = $w->cget( "-state" );
 
-	return if ($state eq 'textonly' || $state eq 'disabled');
+	return if ($state =~ /text/ || $state eq 'disabled');
 
 	#JWT:   NEXT 2 LINES PREVENT POPPING EMPTY LIST!
 
@@ -837,49 +984,42 @@ sub PopupChoices
 		my ($unitpixels, $ht, $x1, $ee, $width, $x2);
 		if ($^O =~ /Win/i)
 		{
-			#$y1 -= 3;
-#print "-bw=$w->{-borderwidth}= y1 was=$y1=\n";
 			$y1 -= 3 - ($w->{-borderwidth} || 2);
-#print "-bw=$w->{-borderwidth}= y1 now=$y1=\n";
-			#$unitpixels = $e->height - ((2 * $bd) + 1) + 6;
 			$unitpixels = $e->height + 1;
-			#$ht = ($wheight * $unitpixels) + 10;
 			$ht = ($wheight * $unitpixels) + (2 * $bd) + 4;
-#print "-???- eheight=$e->height= BD=$bd= up=$unitpixels= wh=$wheight= HT=$ht=\n";
-			#$ee = $w->Subwidget("textpart");
 			$ee = $w->Subwidget("frame");
 			$x1 = $ee->rootx;
 			$x2 = $a->rootx + $a->width;
 			$width = $x2 - $x1;
-			$rw = $width + $w->{-borderwidth};
+			#$rw = $width + $w->{-borderwidth};
+			#CHGD. TO NEXT 20030531 PER PATCH BY FRANK HERRMANN.
+			$rw = ($width || 0) + ($w->{-borderwidth} || 0);
 			$x1 += 1;  #FUDGE MORE FOR WINDOWS (THINNER BORDER) TO MAKE DROPDOWN LINE UP VERTICALLY W/ENTRY&BUTTON.
 		}
 		else
 		{
 			$y1 -= 3 - ($w->{-borderwidth} || 2);
-			#$unitpixels = $e->height - ((2 * $bd) + 1) + 4;
 			$unitpixels = $e->height - 1;
-			#$ht = ($wheight * $unitpixels) + 10;
-			$ht = ($wheight * $unitpixels) + (2 * $bd) + 4;
-			#$x1 = $e->rootx;
-			#$ee = $w->Subwidget("textpart");
+			$ht = ($wheight * $unitpixels) + (2 * $bd) + 6;
 			$ee = $w->Subwidget("frame");
 			$x1 = $ee->rootx;
 			$x2 = $a->rootx + $a->width;
 			$width = $x2 - $x1;
-			if ($rw < $width)
-			{
-				$rw = $width;
-			}
-			else
-			{
-				$rw = $width * 3  if ($rw > $width * 3);
-				$rw = $w->vrootwidth  if ($rw > $w->vrootwidth);
-			}
-			$width = $rw;
+#			if ($rw < $width)   #NEXT 10 LINES REPLACED BY FOLLOWING LINE 20020815.
+#			{
+#				$rw = $width;
+#			}
+#			else
+#			{
+#				$rw = $width * 3  if ($rw > $width * 3);
+#				$rw = $w->vrootwidth  if ($rw > $w->vrootwidth);
+#			}
+#			$width = $rw;   #REMOVED 20020815 - UNNECESSARY!
+$rw = $width;    #ADDED 20020815 TO CAUSE LISTBOX TO ADJUST WIDTH TO SAME AS VARYING ENTRY FIELD!
 			if ($first)
 			{
-				#$rw += 4;
+				#NEXT LINE ADDED 20030531 PER PATCH BY FRANK HERRMANN.
+				$w->{-borderwidth} = 0 unless(defined $w->{-borderwidth});	# XXX
 				$rw += 1 + int($w->{-borderwidth} / 2);
 				$first = 0;
 			}
@@ -910,7 +1050,6 @@ sub PopupChoices
 		$c->geometry(sprintf("%dx%d+%d+%d", $rw, $ht, $x1, $y1));
 		$c->deiconify;
 		$c->raise;
-		#$e->focus;
 		$w->focus;
 		$w->{"popped"} = 1;
 
@@ -936,7 +1075,7 @@ sub LbChoose
 	else
 	{
 		# SELECT APPROPRIATE ENTRY AND CLOSE THE LISTBOX
-		$w->LbCopySelection;
+		$w->LbCopySelection(0,'listbox.button1');
 	}
 }
 
@@ -955,7 +1094,7 @@ sub LbClose
 
 sub LbCopySelection
 {
-	my ($w, $justcopy) = @_;
+	my ($w, $justcopy, $action) = @_;
 	my $index = $w->LbIndex;
 	if (defined $index)
 	{
@@ -964,9 +1103,15 @@ sub LbCopySelection
 		$l->configure(-selectmode => 'browse');
 		my $var_ref = $w->cget( "-textvariable" );
 		$$var_ref = $l->get($index);
+		my $e = $w->Subwidget("entry");
+		$e->icursor('end');
 	}
-	$w->Popdown  if ($w->{"popped"} && !$justcopy);
-	$w->Callback(-browsecmd => $w, $w->Subwidget('entry')->get);
+	#$w->Popdown  if ($w->{"popped"} && !$justcopy);
+	if ($w->{"popped"} && !$justcopy)
+	{
+		$w->Popdown;
+		$w->Callback(-browsecmd => $w, $w->Subwidget('entry')->get, $action);
+	}
 }
 
 # GRAB TEXT TYPED IN AND FIND NEAREST ENTRY IN LISTBOX AND SELECT IT.
@@ -1011,7 +1156,9 @@ sub LbFindSelection
 	{
 		++$index;
 		$index = 0  if ($index > $#listsels);
-		if ($listsels[$index] =~ /^$srchval/i)
+		#if ($listsels[$index] =~ /^$srchval/i)
+		#CHGD. TO NEXT 20030531 PER PATCH BY FRANK HERRMANN.
+		if (defined $srchval && $listsels[$index] =~ /^$srchval/i)
 		{
 			$l->selectionClear('0','end');
 			$l->activate($index);
@@ -1029,7 +1176,6 @@ sub LbIndex
 	my ($w, $flag) = @_;
 	my $sel = $w->Subwidget("slistbox")->Subwidget("listbox")->curselection 
 	|| $w->Subwidget("slistbox")->Subwidget("listbox")->index('active');
-
 	if (defined $sel)
 	{
 		return int($sel);
@@ -1053,20 +1199,25 @@ sub Popdown
 {
 	my ($w, $flag) = @_;
 	my ($state) = $w->cget( "-state" );
-
-	if ($w->{'savefocus'} && Tk::Exists($w->{'savefocus'}))
-	{
-		$w->{'savefocus'}->focus;
-		delete $w->{'savefocus'};
-	}
 	if ($w->{"popped"})
 	{
 		my $c = $w->Subwidget("choices");
 		$c->withdraw;
 		$w->grabRelease;
 		$w->{"popped"} = 0;
-		$w->Subwidget("entry")->focus  unless ($flag);
-		$w->Subwidget("entry")->selectionRange(0,'end');
+		########$w->Subwidget("entry")->focus; #  unless ($flag);
+		$w->Subwidget("entry")->selectionRange(0,'end')  
+				unless ($w->{-noselecttext} || !$w->Subwidget("entry")->index('end'));
+	}
+
+	if ($w->{'savefocus'} && Tk::Exists($w->{'savefocus'}))
+	{
+		$w->{'savefocus'}->focus;
+		#delete $w->{'savefocus'};
+	}
+	else
+	{
+		$w->Subwidget("entry")->focus; #  unless ($flag);
 	}
 }
 
@@ -1105,7 +1256,8 @@ sub choices
 		if( $choices )
 		{
 			$w->delete( qw/0 end/ );
-			$w->Subwidget("slistbox")->insert( "end", @$choices );
+#			$w->Subwidget("slistbox")->insert( "end", @$choices );
+			$w->insert($choices);
 		}
 
 		#NO WIDTH SPECIFIED, CALCULATE TEXT & LIST WIDTH BASED ON LONGEST CHOICE.
@@ -1118,8 +1270,12 @@ sub choices
 			{
 				$width = length($l[$i])  if ($width < length($l[$i]));
 			}
+			$width = $w->{-maxwidth}  if ($width > $w->{-maxwidth} && $w->{-maxwidth} > 0);
 			$w->Subwidget("entry")->configure(-width => $width);
+			$w->Subwidget("choices")->configure(-width => $width);
+			$w->Subwidget("slistbox")->configure(-width => $width);
 		}
+		$w->state($w->cget(-state));
 		return( "" );
 	}
 }
@@ -1129,29 +1285,56 @@ sub choices
 sub insert
 {
 	my $w = shift;
-	my $pos = shift || 'end';    #POSITION IN LIST TO INSERT.
-	my $item = shift;            #POINTER TO OR LIST OF ITEMS TO INSERT.
-	if (ref($item))
+	my ($pos);
+	if ($_[1])
 	{
-		$w->Subwidget("slistbox")->insert($pos, @$item);
+		$pos = shift;
 	}
 	else
 	{
-		$w->Subwidget("slistbox")->insert($pos, ($item, @_));
+		$pos = 'end';
+	}
+	#my $pos = shift || 'end';    #POSITION IN LIST TO INSERT.
+	my $item = shift;            #POINTER TO OR LIST OF ITEMS TO INSERT.
+	my $res;
+	if (ref($item))
+	{
+		$res = $w->Subwidget("slistbox")->insert($pos, @$item);
+	}
+	else
+	{
+		$res = $w->Subwidget("slistbox")->insert($pos, $item, @_);
 	}
 
 	#NO WIDTH SPECIFIED, (RE)CALCULATE TEXT & LIST WIDTH BASED ON LONGEST CHOICE.
 
 	unless ($w->{-listwidth})
 	{
-		my @l = $w->Subwidget("slistbox")->insert(0, 'end');
+		my @l = $w->Subwidget("slistbox")->get(0, 'end');
 		my $width = 0;
 		for (my $i=0;$i<=$#l;$i++)
 		{
 			$width = length($l[$i])  if ($width < length($l[$i]));
 		}
+		$width = $w->{-maxwidth}  if ($width > $w->{-maxwidth} && $w->{-maxwidth} > 0);
 		$w->Subwidget("entry")->configure(-width => $width);
+		$w->Subwidget("choices")->configure(-width => $width);
+		$w->Subwidget("slistbox")->configure(-width => $width);
 	}
+	$w->state($w->state());
+	return $res;
+}
+
+sub delete
+{
+	my $w = shift;
+	my $res = $w->Subwidget("slistbox")->delete(@_);
+	unless ($w->Subwidget("slistbox")->size > 0)
+	{
+		my $button = $w->Subwidget( "arrow" );
+		$button->configure( -state => "disabled", -takefocus => 0);
+	}
+	return $res;
 }
 
 sub curselection  #RETURN CURRENT LISTBOX SELECTION.
@@ -1164,6 +1347,7 @@ sub curselection  #RETURN CURRENT LISTBOX SELECTION.
 sub _set_edit_state
 {
 	my( $w, $state ) = @_;
+	$state ||= 'normal';      #JWT: HAD TO ADD THIS IN TK804...
 	my $entry  = $w->Subwidget( "entry" );
 	my $frame  = $w->Subwidget( "frame" );
 	my $button = $w->Subwidget( "arrow" );
@@ -1185,11 +1369,13 @@ sub _set_edit_state
 			}
 			$entry->configure( -background => $color );
 		}
-		else
+		else   #UNIX.
 		{
-			if ($w->cget( "-colorstate" ))
+			#THIS APPEARS TO FORCE THE TEXT BACKGROUND TO GREY, IF THE PALETTE 
+			#IS SOMETHING ELSE BUT USER HAS NOT SPECIFIED A BACKGROUND.
+			if ($w->cget( "-colorstate" ))  #NOT SURE WHAT POINT OF THIS IS.
 			{
-				if( $state eq "normal" )
+				if( $state eq "normal" || $state =~ /text/ )
 				{# Editable
 					$color = "gray95";
 				}
@@ -1197,13 +1383,12 @@ sub _set_edit_state
 				{# Not Editable
 					$color = $w->cget( -background ) || "lightgray";
 				}
-				$entry->configure( -background => $color );
+				$entry->configure( -background => $color);
 			}
 		}
 	}
 
 	$txtcolor = $w->{-foreground} || $w->cget( -foreground )  unless ($state eq "disabled");
-
 	$texthlcolor = $w->{-background} || $entry->cget( -background );
 	$framehlcolor = $w->{-foreground} || $entry->cget( -foreground );
 	if( $state eq "readonly" )
@@ -1213,23 +1398,23 @@ sub _set_edit_state
 				-foreground => $txtcolor, -highlightcolor => $texthlcolor);
 		if ($^O =~ /Win/i)
 		{
-			$button->configure( -state => "normal", -takefocus => 0, -relief => 'raised');
+			$button->configure( -state => "normal", -takefocus => $w->{btntakesfocus}, -relief => 'raised');
 			$frame->configure(-relief => ($w->{-relief} || 'groove'), 
-					-takefocus => 1, -highlightcolor => $framehlcolor);
+					-takefocus => (1 & $w->{takefocus}), -highlightcolor => $framehlcolor);
 		}
 		else
 		{
-			$button->configure( -state => "normal", -takefocus => 0, -relief => 'flat');
+			$button->configure( -state => "normal", -takefocus => $w->{btntakesfocus}, -relief => 'raised');
 			$frame->configure(-relief => ($w->{-relief} || 'raised'), 
-					-takefocus => 1, -highlightcolor => $framehlcolor);
+					-takefocus => (1 & $w->{takefocus}), -highlightcolor => $framehlcolor);
 		}
 	}
-	elsif ($state eq "textonly" )
+	elsif ($state =~ /text/ )
 	{
 		$framehlcolor = $w->{-background} || 'SystemButtonFace'
 				if ($^O =~ /Win/i);
 		$button->configure( -state => "disabled", -takefocus => 0, 
-				-relief => 'raised');
+				-relief => 'flat');
 		$frame->configure(-relief => ($w->{-relief} || 'sunken'), 
 				-takefocus => 0, -highlightcolor => $framehlcolor);
 		$entry->configure( -state => 'normal', 
@@ -1239,7 +1424,8 @@ sub _set_edit_state
 	elsif ($state eq "disabled" )
 	{
 		$entry->configure( -state => "disabled", -takefocus => 0, 
-				-foreground => 'gray50', -highlightcolor => $texthlcolor);
+				-foreground => ($button->cget('-disabledforeground')||'gray30'), -highlightcolor => $texthlcolor);
+				#-foreground => 'gray30', -highlightcolor => $texthlcolor);
 		if ($^O =~ /Win/i)
 		{
 			$framehlcolor = $w->{-background} || 'SystemButtonFace';
@@ -1269,6 +1455,10 @@ sub _set_edit_state
 				-takefocus => (1 & $w->{takefocus}), 
 				-highlightcolor => $framehlcolor);
 	}       
+	unless ($w->Subwidget("slistbox")->size > 0)
+	{
+		$button->configure( -state => "disabled", -takefocus => 0);
+	}
 }
 
 sub state
@@ -1294,36 +1484,6 @@ sub _max
 		$max = $val if $max < $val;
 	}
 	return( $max );
-}
-
-sub shrinkwrap
-{
-	my( $w, $size ) = @_;
-
-	unless( defined $size )
-	{
-		$size = _max( map( length, $w->get( qw/0 end/ ) ) ) || 0;;
-	}
-
-	my $lb = $w->Subwidget( "slistbox" )->Subwidget( "listbox" );
-	$w->configure(  -width => $size );
-	$lb->configure( -width => $size );
-}
-
-sub setstate
-{
-	my ($w) = shift;
-	my ($state) = shift;
-
-	$w->configure(-state => $state);
-	if ($state eq 'textonly')
-	{
-		$w->Button->configure(-state => 'disabled');
-	}
-	else
-	{
-		$w->Button->configure(-state => $state);
-	}
 }
 
 1;
